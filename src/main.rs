@@ -20,10 +20,10 @@ async fn main() {
     let config = Config::from_env();
     let pool = db::create_pool(&config.database_url).await;
 
-    sqlx::migrate!()
-        .run(&pool)
-        .await
-        .expect("Failed to run migrations");
+    // sqlx::migrate!()
+    //     .run(&pool)
+    //     .await
+    //     .expect("Failed to run migrations");
 
     let ws_connections = messages::websocket::TicketConnections::new();
     let _email_sender = EmailJobSender::new(config.clone(), pool.clone());
