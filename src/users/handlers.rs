@@ -12,7 +12,7 @@ pub async fn list_users(
     axum::Extension(claims): axum::Extension<Claims>,
     Query(query): Query<ListUsersQuery>,
 ) -> Result<Json<UserList>, AppError> {
-    if claims.role != "admin" {
+    if claims.role != "superadmin" {
         return Err(AppError::Forbidden);
     }
 
@@ -50,14 +50,14 @@ pub async fn list_users(
     let sql = format!(
         r#"
         SELECT
-            CAST(id AS TEXT) as "id!",
+            CAST(id AS TEXT) as id,
             email,
             full_name,
-            CAST(role AS TEXT) as "role!",
+            CAST(role AS TEXT) as role,
             CAST(department_id AS TEXT) as department_id,
             is_active,
-            CAST(created_at AS TEXT) as "created_at!",
-            CAST(updated_at AS TEXT) as "updated_at!"
+            CAST(created_at AS TEXT) as created_at,
+            CAST(updated_at AS TEXT) as updated_at
         FROM users
         WHERE 1=1 {} {} {}
         ORDER BY created_at DESC
@@ -80,11 +80,7 @@ pub async fn list_users(
     if has_active {
         q = q.bind(query.is_active);
     }
-    let users = q
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&state.pool)
-        .await?;
+    let users = q.bind(limit).bind(offset).fetch_all(&state.pool).await?;
 
     let mut count_sql = "SELECT COUNT(*)::bigint FROM users WHERE 1=1".to_string();
     let mut count_bind_idx = 1;
@@ -93,10 +89,7 @@ pub async fn list_users(
         count_bind_idx += 1;
     }
     if has_dept {
-        count_sql.push_str(&format!(
-            " AND department_id = ${}::uuid",
-            count_bind_idx
-        ));
+        count_sql.push_str(&format!(" AND department_id = ${}::uuid", count_bind_idx));
         count_bind_idx += 1;
     }
     if has_active {
@@ -135,14 +128,14 @@ pub async fn get_user(
     let user = sqlx::query_as::<_, User>(
         r#"
         SELECT
-            CAST(id AS TEXT) as "id!",
+            CAST(id AS TEXT) as id,
             email,
             full_name,
-            CAST(role AS TEXT) as "role!",
+            CAST(role AS TEXT) as role,
             CAST(department_id AS TEXT) as department_id,
             is_active,
-            CAST(created_at AS TEXT) as "created_at!",
-            CAST(updated_at AS TEXT) as "updated_at!"
+            CAST(created_at AS TEXT) as created_at,
+            CAST(updated_at AS TEXT) as updated_at
         FROM users
         WHERE id = $1::uuid
         "#,
@@ -160,7 +153,7 @@ pub async fn create_user(
     axum::Extension(claims): axum::Extension<Claims>,
     Json(payload): Json<CreateUserRequest>,
 ) -> Result<Json<User>, AppError> {
-    if claims.role != "admin" {
+    if claims.role != "superadmin" {
         return Err(AppError::Forbidden);
     }
 
@@ -174,7 +167,7 @@ pub async fn create_user(
         ));
     }
 
-    let valid_roles = ["customer", "agent", "manager", "admin"];
+    let valid_roles = ["customer", "agent", "deptadmin"];
     if !valid_roles.contains(&payload.role.as_str()) {
         return Err(AppError::Validation(format!(
             "Invalid role. Must be one of: {}",
@@ -190,14 +183,14 @@ pub async fn create_user(
         INSERT INTO users (email, password_hash, full_name, role, department_id)
         VALUES ($1, $2, $3, $4::user_role, $5::uuid)
         RETURNING
-            CAST(id AS TEXT) as "id!",
+            CAST(id AS TEXT) as id,
             email,
             full_name,
-            CAST(role AS TEXT) as "role!",
+            CAST(role AS TEXT) as role,
             CAST(department_id AS TEXT) as department_id,
             is_active,
-            CAST(created_at AS TEXT) as "created_at!",
-            CAST(updated_at AS TEXT) as "updated_at!"
+            CAST(created_at AS TEXT) as created_at,
+            CAST(updated_at AS TEXT) as updated_at
         "#,
     )
     .bind(&payload.email)

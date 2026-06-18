@@ -1,5 +1,5 @@
 -- Create users table
-CREATE TYPE user_role AS ENUM ('customer', 'agent', 'manager', 'admin');
+CREATE TYPE user_role AS ENUM ('customer', 'agent', 'deptadmin', 'superadmin');
 
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
